@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/student_model.dart';
 import '../widgets/student_card.dart';
 import '../widgets/add_button.dart';
+import '../services/database_service.dart';
 import 'form_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -13,6 +14,34 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   List<Student> students = [];
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStudents();
+  }
+
+  // Fungsi untuk memuat data siswa dari database
+  Future<void> _loadStudents() async {
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      final fetchedStudents = await DatabaseService.getAllStudents();
+      setState(() {
+        students = fetchedStudents;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Gagal memuat data siswa: $e')));
+    }
+  }
 
   void _addStudent(Student student) {
     setState(() {
@@ -29,6 +58,11 @@ class _HomePageState extends State<HomePage> {
     if (result != null && result is Student) {
       _addStudent(result);
     }
+  }
+
+  // Callback untuk memperbarui daftar setelah edit atau hapus
+  void _onStudentUpdated() {
+    _loadStudents();
   }
 
   @override
@@ -48,7 +82,11 @@ class _HomePageState extends State<HomePage> {
         ),
         centerTitle: true,
       ),
-      body: students.isEmpty ? _buildEmptyState() : _buildStudentList(),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : students.isEmpty
+          ? _buildEmptyState()
+          : _buildStudentList(),
       floatingActionButton: AddStudentFAB(onPressed: _navigateToForm),
     );
   }
@@ -100,7 +138,10 @@ class _HomePageState extends State<HomePage> {
             delegate: SliverChildBuilderDelegate((context, index) {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: StudentCard(student: students[index]),
+                child: StudentCard(
+                  student: students[index],
+                  onStudentUpdated: _onStudentUpdated,
+                ),
               );
             }, childCount: students.length),
           ),

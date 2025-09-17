@@ -4,6 +4,24 @@ import '../models/student_model.dart';
 class DatabaseService {
   static final _client = SupabaseConfig.client;
 
+  // Cek apakah NISN sudah ada
+  static Future<bool> isNisnExists(String nisn, {String? excludeId}) async {
+    try {
+      final query = _client.from('siswa').select('nisn').eq('nisn', nisn);
+
+      // Jika sedang mengedit, kecualikan ID siswa yang sedang diedit
+      if (excludeId != null) {
+        query.not('id', 'eq', excludeId);
+      }
+
+      final response = await query;
+
+      return response.isNotEmpty;
+    } catch (e) {
+      throw Exception('Gagal memeriksa NISN: $e');
+    }
+  }
+
   // Master Data Methods
   static Future<List<String>> getKabupaten() async {
     try {
@@ -115,6 +133,11 @@ class DatabaseService {
   // Student CRUD Methods
   static Future<String> insertStudent(Student student) async {
     try {
+      // Cek apakah NISN sudah ada
+      if (await isNisnExists(student.nisn)) {
+        throw Exception('NISN sudah terdaftar');
+      }
+
       // Prepare data dengan mapping yang benar
       final data = {
         'nisn': student.nisn,
@@ -155,6 +178,19 @@ class DatabaseService {
     }
   }
 
+  static Future<void> updateStudent(Student student) async {
+    try {
+      // Cek apakah NISN sudah ada (kecuali untuk siswa yang sedang diedit)
+      if (await isNisnExists(student.nisn, excludeId: student.id)) {
+        throw Exception('NISN sudah terdaftar untuk siswa lain');
+      }
+
+      await _client.from('siswa').update(student.toJson()).eq('id', student.id);
+    } catch (e) {
+      throw Exception('Gagal mengupdate data siswa: $e');
+    }
+  }
+
   static Future<List<Student>> getAllStudents() async {
     try {
       final response = await _client
@@ -179,14 +215,6 @@ class DatabaseService {
       return Student.fromJson(response);
     } catch (e) {
       return null;
-    }
-  }
-
-  static Future<void> updateStudent(Student student) async {
-    try {
-      await _client.from('siswa').update(student.toJson()).eq('id', student.id);
-    } catch (e) {
-      throw Exception('Gagal mengupdate data siswa: $e');
     }
   }
 

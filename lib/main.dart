@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'config/supabase_config.dart';
-import 'pages/home_pages.dart';
+import 'widgets/app_wrapper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,9 +22,22 @@ class PPDBApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         fontFamily: 'Roboto',
         visualDensity: VisualDensity.adaptivePlatformDensity,
-        appBarTheme: const AppBarTheme(elevation: 0, centerTitle: true),
+        appBarTheme: const AppBarTheme(
+          elevation: 0,
+          centerTitle: true,
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black87,
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
       ),
-      home: const HomePage(),
+      home: const AppWrapper(),
       debugShowCheckedModeBanner: false,
     );
   }
