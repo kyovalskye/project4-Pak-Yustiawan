@@ -1,89 +1,75 @@
+// widgets/custom_text_field.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class CustomTextField extends StatelessWidget {
-  final String label;
-  final String? hintText;
   final TextEditingController controller;
+  final String label;
+  final IconData icon;
   final String? Function(String?)? validator;
-  final TextInputType keyboardType;
-  final bool enabled;
+  final TextInputType? keyboardType;
+  final List<TextInputFormatter>? inputFormatters;
+  final TextCapitalization textCapitalization;
   final int maxLines;
-  final Widget? suffixIcon;
-  final VoidCallback? onTap;
-  final bool readOnly;
+  final bool obscureText;
+  final bool enabled; // Tambahkan parameter ini
 
   const CustomTextField({
     Key? key,
-    required this.label,
-    this.hintText,
     required this.controller,
+    required this.label,
+    required this.icon,
     this.validator,
-    this.keyboardType = TextInputType.text,
-    this.enabled = true,
+    this.keyboardType,
+    this.inputFormatters,
+    this.textCapitalization = TextCapitalization.none,
     this.maxLines = 1,
-    this.suffixIcon,
-    this.onTap,
-    this.readOnly = false,
+    this.obscureText = false,
+    this.enabled = true, // Default value true
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF2D3748),
-          ),
+    return TextFormField(
+      controller: controller,
+      validator: validator,
+      keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
+      textCapitalization: textCapitalization,
+      maxLines: maxLines,
+      obscureText: obscureText,
+      enabled: enabled, // Tambahkan properti ini
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: Colors.blue[600]),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey[300]!),
         ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: controller,
-          validator: validator,
-          keyboardType: keyboardType,
-          enabled: enabled,
-          maxLines: maxLines,
-          onTap: onTap,
-          readOnly: readOnly,
-          decoration: InputDecoration(
-            hintText: hintText ?? 'Masukkan $label',
-            hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
-            suffixIcon: suffixIcon,
-            filled: true,
-            fillColor: enabled ? Colors.white : Colors.grey[100],
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey[300]!),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey[300]!),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(
-                color: Theme.of(context).primaryColor,
-                width: 2,
-              ),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.red),
-            ),
-            focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.red, width: 2),
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 16,
-            ),
-          ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.blue[600]!, width: 2),
         ),
-      ],
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.red, width: 2),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.red, width: 2),
+        ),
+        filled: true,
+        fillColor: Colors.grey[50],
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
+        labelStyle: TextStyle(
+          color: Colors.grey[600],
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
     );
   }
 }

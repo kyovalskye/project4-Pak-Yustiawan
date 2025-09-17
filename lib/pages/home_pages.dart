@@ -1,53 +1,55 @@
 import 'package:flutter/material.dart';
-import '../models/student_models.dart';
+import '../models/student_model.dart';
 import '../widgets/student_card.dart';
+import '../widgets/add_button.dart';
 import 'form_page.dart';
 
-class Homepage extends StatefulWidget {
-  const Homepage({Key? key}) : super(key: key);
+class HomePage extends StatefulWidget {
+  const HomePage({Key? key}) : super(key: key);
 
   @override
-  State<Homepage> createState() => _HomepageState();
+  State<HomePage> createState() => _HomePageState();
 }
 
-class _HomepageState extends State<Homepage> {
+class _HomePageState extends State<HomePage> {
   List<Student> students = [];
 
   void _addStudent(Student student) {
     setState(() {
-      students.insert(0, student);
+      students.add(student);
     });
+  }
+
+  void _navigateToForm() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const FormPage()),
+    );
+
+    if (result != null && result is Student) {
+      _addStudent(result);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7FAFC),
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Colors.white,
         title: const Text(
           'PPDB Online',
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+          style: TextStyle(
+            color: Colors.black87,
+            fontWeight: FontWeight.bold,
+            fontSize: 24,
+          ),
         ),
-        backgroundColor: const Color(0xFF4299E1),
-        elevation: 0,
         centerTitle: true,
       ),
       body: students.isEmpty ? _buildEmptyState() : _buildStudentList(),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const FormPage()),
-          );
-
-          if (result != null && result is Student) {
-            _addStudent(result);
-          }
-        },
-        backgroundColor: const Color(0xFF4299E1),
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('Tambah Data', style: TextStyle(color: Colors.white)),
-      ),
+      floatingActionButton: AddStudentFAB(onPressed: _navigateToForm),
     );
   }
 
@@ -56,28 +58,20 @@ class _HomepageState extends State<Homepage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(
-              color: const Color(0xFF4299E1).withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.school, size: 80, color: Color(0xFF4299E1)),
-          ),
+          Icon(Icons.school_outlined, size: 120, color: Colors.grey[400]),
           const SizedBox(height: 24),
-          const Text(
-            'Belum Ada Data Pendaftar',
+          Text(
+            'Belum ada data siswa',
             style: TextStyle(
-              fontSize: 20,
+              fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF2D3748),
+              color: Colors.grey[600],
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
-            'Tekan tombol "Tambah Data" untuk menambahkan\npendaftar baru',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+            'Tap tombol + untuk menambah data siswa',
+            style: TextStyle(fontSize: 16, color: Colors.grey[500]),
           ),
         ],
       ),
@@ -87,54 +81,26 @@ class _HomepageState extends State<Homepage> {
   Widget _buildStudentList() {
     return CustomScrollView(
       slivers: [
-        SliverToBoxAdapter(
-          child: Container(
-            margin: const EdgeInsets.all(20),
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF4299E1), Color(0xFF3182CE)],
+        SliverPadding(
+          padding: const EdgeInsets.all(16),
+          sliver: SliverToBoxAdapter(
+            child: Text(
+              'Data Siswa (${students.length})',
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
               ),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.analytics, color: Colors.white, size: 32),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Total Pendaftar',
-                        style: TextStyle(color: Colors.white70, fontSize: 14),
-                      ),
-                      Text(
-                        '${students.length}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
             ),
           ),
         ),
         SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate((context, index) {
-              return StudentCard(
-                student: students[index],
-                onTap: () {
-                  // TODO: Navigate to detail page
-                },
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: StudentCard(student: students[index]),
               );
             }, childCount: students.length),
           ),

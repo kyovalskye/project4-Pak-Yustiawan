@@ -1,32 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
-class CustomDropdown extends StatelessWidget {
+class DatePickerField extends StatelessWidget {
   final String label;
   final IconData icon;
-  final String? value;
-  final List<String> items;
-  final void Function(String?) onChanged;
+  final DateTime? selectedDate;
+  final Function(DateTime?) onDateSelected;
   final String? Function(String?)? validator;
 
-  const CustomDropdown({
+  const DatePickerField({
     Key? key,
     required this.label,
     required this.icon,
-    required this.value,
-    required this.items,
-    required this.onChanged,
+    required this.selectedDate,
+    required this.onDateSelected,
     this.validator,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return DropdownButtonFormField<String>(
-      value: value,
-      onChanged: onChanged,
+    return TextFormField(
+      readOnly: true,
       validator: validator,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, color: Colors.blue[600]),
+        suffixIcon: Icon(Icons.keyboard_arrow_down, color: Colors.grey[600]),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: Colors.grey[300]!),
@@ -54,15 +53,36 @@ class CustomDropdown extends StatelessWidget {
           fontWeight: FontWeight.w500,
         ),
       ),
-      style: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w500,
-        color: Colors.black87,
+      controller: TextEditingController(
+        text: selectedDate != null
+            ? DateFormat('dd/MM/yyyy').format(selectedDate!)
+            : '',
       ),
-      dropdownColor: Colors.white,
-      items: items.map((String item) {
-        return DropdownMenuItem<String>(value: item, child: Text(item));
-      }).toList(),
+      onTap: () async {
+        final DateTime? picked = await showDatePicker(
+          context: context,
+          initialDate: selectedDate ?? DateTime.now(),
+          firstDate: DateTime(1950),
+          lastDate: DateTime.now(),
+          builder: (context, child) {
+            return Theme(
+              data: Theme.of(context).copyWith(
+                colorScheme: ColorScheme.light(
+                  primary: Colors.blue[600]!,
+                  onPrimary: Colors.white,
+                  onSurface: Colors.black87,
+                ),
+              ),
+              child: child!,
+            );
+          },
+        );
+
+        if (picked != null) {
+          onDateSelected(picked);
+        }
+      },
+      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
     );
   }
 }
