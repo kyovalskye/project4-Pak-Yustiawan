@@ -6,6 +6,8 @@ import '../widgets/progress_indicator.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/custom_dropdown.dart';
 import '../widgets/date_picker_field.dart';
+import '../widgets/custom_autocomplete.dart';
+import '../widgets/error_dialog.dart'; // Import dialog error
 
 class FormPage extends StatefulWidget {
   const FormPage({Key? key}) : super(key: key);
@@ -38,23 +40,21 @@ class _FormPageState extends State<FormPage> {
   final _namaIbuController = TextEditingController();
   final _namaWaliController = TextEditingController();
   final _alamatWaliController = TextEditingController();
+  final _dusunController = TextEditingController();
 
   String? _jenisKelamin;
   String? _agama;
   DateTime? _tanggalLahir;
 
-  // Address dropdown values
-  String? _selectedKabupaten;
-  String? _selectedKecamatan;
-  String? _selectedDesa;
+  // Address values
   String? _selectedDusun;
+  String? _selectedDesa;
+  String? _selectedKecamatan;
+  String? _selectedKabupaten;
+  String _provinsi = '';
   String _kodePos = '';
-  String _provinsi = 'Jawa Timur';
 
   // Address dropdown lists
-  List<String> _kabupatenList = [];
-  List<String> _kecamatanList = [];
-  List<String> _desaList = [];
   List<String> _dusunList = [];
 
   bool _isLoading = false;
@@ -63,7 +63,7 @@ class _FormPageState extends State<FormPage> {
   @override
   void initState() {
     super.initState();
-    _loadKabupaten();
+    _loadAllDusun();
   }
 
   @override
@@ -81,111 +81,63 @@ class _FormPageState extends State<FormPage> {
     _namaIbuController.dispose();
     _namaWaliController.dispose();
     _alamatWaliController.dispose();
+    _dusunController.dispose();
     super.dispose();
   }
 
   // Address loading methods
-  Future<void> _loadKabupaten() async {
+  Future<void> _loadAllDusun() async {
     try {
       setState(() => _isLoadingAddress = true);
-      final kabupaten = await DatabaseService.getKabupaten();
-      setState(() {
-        _kabupatenList = kabupaten;
-        _isLoadingAddress = false;
-      });
-    } catch (e) {
-      setState(() => _isLoadingAddress = false);
-      _showErrorSnackBar('Gagal memuat data kabupaten: $e');
-    }
-  }
-
-  Future<void> _loadKecamatan(String kabupaten) async {
-    try {
-      setState(() => _isLoadingAddress = true);
-      final kecamatan = await DatabaseService.getKecamatan(kabupaten);
-      setState(() {
-        _kecamatanList = kecamatan;
-        _selectedKecamatan = null;
-        _selectedDesa = null;
-        _selectedDusun = null;
-        _desaList.clear();
-        _dusunList.clear();
-        _kodePos = '';
-        _isLoadingAddress = false;
-      });
-    } catch (e) {
-      setState(() => _isLoadingAddress = false);
-      _showErrorSnackBar('Gagal memuat data kecamatan: $e');
-    }
-  }
-
-  Future<void> _loadDesa(String kabupaten, String kecamatan) async {
-    try {
-      setState(() => _isLoadingAddress = true);
-      final desa = await DatabaseService.getDesa(kabupaten, kecamatan);
-      setState(() {
-        _desaList = desa;
-        _selectedDesa = null;
-        _selectedDusun = null;
-        _dusunList.clear();
-        _kodePos = '';
-        _isLoadingAddress = false;
-      });
-    } catch (e) {
-      setState(() => _isLoadingAddress = false);
-      _showErrorSnackBar('Gagal memuat data desa: $e');
-    }
-  }
-
-  Future<void> _loadDusun(
-    String kabupaten,
-    String kecamatan,
-    String desa,
-  ) async {
-    try {
-      setState(() => _isLoadingAddress = true);
-      final dusun = await DatabaseService.getDusun(kabupaten, kecamatan, desa);
+      final dusun = await DatabaseService.getAllDusun();
       setState(() {
         _dusunList = dusun;
-        _selectedDusun = null;
+        _isLoadingAddress = false;
+      });
+    } catch (e) {
+      setState(() => _isLoadingAddress = false);
+      if (mounted) {
+        showErrorDialog(context, e); // Gunakan dialog error
+      }
+    }
+  }
+
+  Future<void> _loadAddressDetailsByDusun(String? dusun) async {
+    if (dusun == null || dusun.isEmpty) {
+      setState(() {
+        _selectedDesa = null;
+        _selectedKecamatan = null;
+        _selectedKabupaten = null;
+        _provinsi = '';
         _kodePos = '';
         _isLoadingAddress = false;
       });
-    } catch (e) {
-      setState(() => _isLoadingAddress = false);
-      _showErrorSnackBar('Gagal memuat data dusun: $e');
+      return;
     }
-  }
 
-  Future<void> _loadKodePos(
-    String kabupaten,
-    String kecamatan,
-    String desa,
-    String dusun,
-  ) async {
     try {
       setState(() => _isLoadingAddress = true);
-      final kodePos = await DatabaseService.getKodePos(
-        kabupaten,
-        kecamatan,
-        desa,
-        dusun,
-      );
+      final details = await DatabaseService.getAddressDetailsByDusun(dusun);
       setState(() {
-        _kodePos = kodePos;
+        _selectedDesa = details['desa'] ?? '';
+        _selectedKecamatan = details['kecamatan'] ?? '';
+        _selectedKabupaten = details['kabupaten'] ?? '';
+        _provinsi = details['provinsi'] ?? '';
+        _kodePos = details['kode_pos'] ?? '';
         _isLoadingAddress = false;
       });
     } catch (e) {
-      setState(() => _isLoadingAddress = false);
-      _showErrorSnackBar('Gagal memuat kode pos: $e');
-    }
-  }
-
-  void _showErrorSnackBar(String message) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), backgroundColor: Colors.red),
-      );
+      setState(() {
+        _selectedDesa = null;
+        _selectedKecamatan = null;
+        _selectedKabupaten = null;
+        _provinsi = '';
+        _kodePos = '';
+        _isLoadingAddress = false;
+      });
+      if (mounted) {
+        showErrorDialog(context, e); // Gunakan dialog error
+      }
     }
   }
 
@@ -241,7 +193,7 @@ class _FormPageState extends State<FormPage> {
 
     try {
       final student = Student(
-        id: '', // Will be generated by database
+        id: '',
         nisn: _nisnController.text,
         namaLengkap: _namaController.text,
         jenisKelamin: _jenisKelamin!,
@@ -253,10 +205,10 @@ class _FormPageState extends State<FormPage> {
         jalan: _jalanController.text,
         rt: _rtController.text,
         rw: _rwController.text,
-        dusun: _selectedDusun!,
-        desa: _selectedDesa!,
-        kecamatan: _selectedKecamatan!,
-        kabupaten: _selectedKabupaten!,
+        dusun: _selectedDusun ?? _dusunController.text,
+        desa: _selectedDesa ?? '',
+        kecamatan: _selectedKecamatan ?? '',
+        kabupaten: _selectedKabupaten ?? '',
         provinsi: _provinsi,
         kodePos: _kodePos,
         namaAyah: _namaAyahController.text,
@@ -285,7 +237,9 @@ class _FormPageState extends State<FormPage> {
       setState(() {
         _isLoading = false;
       });
-      _showErrorSnackBar('Gagal menyimpan data: $e');
+      if (mounted) {
+        showErrorDialog(context, e); // Gunakan dialog error
+      }
     }
   }
 
@@ -562,7 +516,7 @@ class _FormPageState extends State<FormPage> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Lengkapi alamat tempat tinggal saat ini',
+              'Lengkapi alamat tempat tinggal saat ini (pilih Dusun)',
               style: TextStyle(fontSize: 16, color: Colors.grey[600]),
             ),
             const SizedBox(height: 24),
@@ -615,109 +569,73 @@ class _FormPageState extends State<FormPage> {
               ],
             ),
             const SizedBox(height: 16),
-            // Cascading Dropdowns for Address
-            CustomDropdown(
-              label: 'Kabupaten',
-              icon: Icons.business_outlined,
-              value: _selectedKabupaten,
-              items: _kabupatenList,
-              onChanged: (value) {
-                setState(() {
-                  _selectedKabupaten = value;
-                });
-                if (value != null) {
-                  _loadKecamatan(value);
-                }
-              },
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Kabupaten harus dipilih';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            CustomDropdown(
-              label: 'Kecamatan',
-              icon: Icons.location_city_outlined,
-              value: _selectedKecamatan,
-              items: _kecamatanList,
-              onChanged: (value) {
-                setState(() {
-                  _selectedKecamatan = value;
-                });
-                if (value != null && _selectedKabupaten != null) {
-                  _loadDesa(_selectedKabupaten!, value);
-                }
-              },
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Kecamatan harus dipilih';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            CustomDropdown(
-              label: 'Desa',
-              icon: Icons.nature_outlined,
-              value: _selectedDesa,
-              items: _desaList,
-              onChanged: (value) {
-                setState(() {
-                  _selectedDesa = value;
-                });
-                if (value != null &&
-                    _selectedKabupaten != null &&
-                    _selectedKecamatan != null) {
-                  _loadDusun(_selectedKabupaten!, _selectedKecamatan!, value);
-                }
-              },
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Desa harus dipilih';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            CustomDropdown(
+            CustomAutocomplete(
+              controller: _dusunController,
               label: 'Dusun',
               icon: Icons.landscape_outlined,
-              value: _selectedDusun,
-              items: _dusunList,
-              onChanged: (value) {
+              suggestions: _dusunList,
+              onSelected: (value) {
                 setState(() {
                   _selectedDusun = value;
+                  _dusunController.text = value!;
                 });
-                if (value != null &&
-                    _selectedKabupaten != null &&
-                    _selectedKecamatan != null &&
-                    _selectedDesa != null) {
-                  _loadKodePos(
-                    _selectedKabupaten!,
-                    _selectedKecamatan!,
-                    _selectedDesa!,
-                    value,
-                  );
-                }
+                _loadAddressDetailsByDusun(value);
               },
               validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Dusun harus dipilih';
+                if ((_selectedDusun ?? _dusunController.text).isEmpty) {
+                  return 'Dusun harus diisi';
                 }
                 return null;
               },
             ),
             const SizedBox(height: 16),
-            // Display Provinsi and Kode Pos (Read-only)
+            CustomTextField(
+              controller: TextEditingController(text: _selectedDesa ?? ''),
+              label: 'Desa',
+              icon: Icons.nature_outlined,
+              enabled: false,
+              validator: (value) {
+                if (_selectedDesa == null || _selectedDesa!.isEmpty) {
+                  return 'Desa harus terisi otomatis';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            CustomTextField(
+              controller: TextEditingController(text: _selectedKecamatan ?? ''),
+              label: 'Kecamatan',
+              icon: Icons.location_city_outlined,
+              enabled: false,
+              validator: (value) {
+                if (_selectedKecamatan == null || _selectedKecamatan!.isEmpty) {
+                  return 'Kecamatan harus terisi otomatis';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            CustomTextField(
+              controller: TextEditingController(text: _selectedKabupaten ?? ''),
+              label: 'Kabupaten',
+              icon: Icons.business_outlined,
+              enabled: false,
+              validator: (value) {
+                if (_selectedKabupaten == null || _selectedKabupaten!.isEmpty) {
+                  return 'Kabupaten harus terisi otomatis';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
             CustomTextField(
               controller: TextEditingController(text: _provinsi),
               label: 'Provinsi',
               icon: Icons.public_outlined,
+              enabled: false,
               validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Provinsi harus diisi';
+                if (_provinsi.isEmpty) {
+                  return 'Provinsi harus terisi otomatis';
                 }
                 return null;
               },
@@ -727,9 +645,10 @@ class _FormPageState extends State<FormPage> {
               controller: TextEditingController(text: _kodePos),
               label: 'Kode Pos',
               icon: Icons.markunread_mailbox_outlined,
+              enabled: false,
               validator: (value) {
                 if (_kodePos.isEmpty) {
-                  return 'Pilih alamat lengkap untuk mendapatkan kode pos';
+                  return 'Pilih dusun untuk mendapatkan kode pos';
                 }
                 return null;
               },
