@@ -467,6 +467,8 @@ class _StudentFormDialogState extends State<StudentFormDialog> {
   String _agama = 'Islam';
   DateTime _tanggalLahir = DateTime.now();
   bool _isLoading = false;
+  List<String> _dusunList = [];
+  String? _selectedDusun;
 
   @override
   void initState() {
@@ -514,6 +516,50 @@ class _StudentFormDialogState extends State<StudentFormDialog> {
     _jenisKelamin = widget.student?.jenisKelamin ?? 'Laki-laki';
     _agama = widget.student?.agama ?? 'Islam';
     _tanggalLahir = widget.student?.tanggalLahir ?? DateTime.now();
+    _selectedDusun = widget.student?.dusun;
+
+    // Load dusun list
+    _loadDusunList();
+  }
+
+  Future<void> _loadDusunList() async {
+    try {
+      final dusunList = await DatabaseService.getAllDusun();
+      setState(() {
+        _dusunList = dusunList;
+        if (_selectedDusun == null || !_dusunList.contains(_selectedDusun)) {
+          _selectedDusun = _dusunList.isNotEmpty ? _dusunList[0] : null;
+        }
+      });
+      if (_selectedDusun != null) {
+        _updateAddressFields();
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Gagal memuat data dusun: $e')));
+    }
+  }
+
+  Future<void> _updateAddressFields() async {
+    if (_selectedDusun != null && _selectedDusun!.isNotEmpty) {
+      try {
+        final addressDetails = await DatabaseService.getAddressDetailsByDusun(
+          _selectedDusun!,
+        );
+        setState(() {
+          _desaController.text = addressDetails['desa'] ?? '';
+          _kecamatanController.text = addressDetails['kecamatan'] ?? '';
+          _kabupatenController.text = addressDetails['kabupaten'] ?? '';
+          _provinsiController.text = addressDetails['provinsi'] ?? '';
+          _kodePosController.text = addressDetails['kode_pos'] ?? '';
+        });
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal memuat detail alamat: $e')),
+        );
+      }
+    }
   }
 
   @override
@@ -554,6 +600,7 @@ class _StudentFormDialogState extends State<StudentFormDialog> {
   }
 
   Future<void> _saveStudent() async {
+    final isEditing = widget.student != null;
     if (_formKey.currentState!.validate()) {
       setState(() {
         _isLoading = true;
@@ -561,18 +608,22 @@ class _StudentFormDialogState extends State<StudentFormDialog> {
       try {
         final student = Student(
           id: widget.student?.id ?? '',
-          nisn: _nisnController.text,
+          nisn: isEditing
+              ? widget.student!.nisn
+              : _nisnController.text, // Use original NISN if editing
           namaLengkap: _namaLengkapController.text,
           jenisKelamin: _jenisKelamin,
           agama: _agama,
           tempatLahir: _tempatLahirController.text,
           tanggalLahir: _tanggalLahir,
           noTelp: _noTelpController.text,
-          nik: _nikController.text,
+          nik: isEditing
+              ? widget.student!.nik
+              : _nikController.text, // Use original NIK if editing
           jalan: _jalanController.text,
           rt: _rtController.text,
           rw: _rwController.text,
-          dusun: _dusunController.text,
+          dusun: _selectedDusun ?? _dusunController.text,
           desa: _desaController.text,
           kecamatan: _kecamatanController.text,
           kabupaten: _kabupatenController.text,
@@ -615,6 +666,8 @@ class _StudentFormDialogState extends State<StudentFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final isEditing = widget.student != null;
+
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Container(
@@ -627,7 +680,7 @@ class _StudentFormDialogState extends State<StudentFormDialog> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  widget.student == null ? 'Tambah Siswa' : 'Edit Siswa',
+                  isEditing ? 'Edit Siswa' : 'Tambah Siswa',
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -637,8 +690,18 @@ class _StudentFormDialogState extends State<StudentFormDialog> {
                 TextFormField(
                   controller: _nisnController,
                   decoration: const InputDecoration(labelText: 'NISN'),
-                  validator: (value) =>
-                      value!.isEmpty ? 'NISN harus diisi' : null,
+                  readOnly: isEditing, // Make NISN read-only when editing
+                  validator: (value) {
+                    if (!isEditing && (value == null || value.isEmpty)) {
+                      return 'NISN harus diisi';
+                    }
+                    if (value != null &&
+                        value.isNotEmpty &&
+                        !RegExp(r'^\d{10}$').hasMatch(value)) {
+                      return 'NISN harus 10 digit angka';
+                    }
+                    return null;
+                  },
                 ),
                 TextFormField(
                   controller: _namaLengkapController,
@@ -649,8 +712,18 @@ class _StudentFormDialogState extends State<StudentFormDialog> {
                 TextFormField(
                   controller: _nikController,
                   decoration: const InputDecoration(labelText: 'NIK'),
-                  validator: (value) =>
-                      value!.isEmpty ? 'NIK harus diisi' : null,
+                  readOnly: isEditing, // Make NIK read-only when editing
+                  validator: (value) {
+                    if (!isEditing && (value == null || value.isEmpty)) {
+                      return 'NIK harus diisi';
+                    }
+                    if (value != null &&
+                        value.isNotEmpty &&
+                        !RegExp(r'^\d{16}$').hasMatch(value)) {
+                      return 'NIK harus 16 digit angka';
+                    }
+                    return null;
+                  },
                 ),
                 DropdownButtonFormField<String>(
                   value: _jenisKelamin,
@@ -662,6 +735,8 @@ class _StudentFormDialogState extends State<StudentFormDialog> {
                     );
                   }).toList(),
                   onChanged: (value) => setState(() => _jenisKelamin = value!),
+                  validator: (value) =>
+                      value == null ? 'Jenis kelamin harus dipilih' : null,
                 ),
                 DropdownButtonFormField<String>(
                   value: _agama,
@@ -681,12 +756,18 @@ class _StudentFormDialogState extends State<StudentFormDialog> {
                         );
                       }).toList(),
                   onChanged: (value) => setState(() => _agama = value!),
+                  validator: (value) =>
+                      value == null ? 'Agama harus dipilih' : null,
                 ),
                 TextFormField(
                   controller: _tempatLahirController,
                   decoration: const InputDecoration(labelText: 'Tempat Lahir'),
-                  validator: (value) =>
-                      value!.isEmpty ? 'Tempat lahir harus diisi' : null,
+                  validator: (value) {
+                    if (!isEditing && (value == null || value.isEmpty)) {
+                      return 'Tempat lahir harus diisi';
+                    }
+                    return null;
+                  },
                 ),
                 TextFormField(
                   controller: TextEditingController(
@@ -695,12 +776,41 @@ class _StudentFormDialogState extends State<StudentFormDialog> {
                   decoration: const InputDecoration(labelText: 'Tanggal Lahir'),
                   readOnly: true,
                   onTap: () => _selectDate(context),
+                  validator: (value) =>
+                      value!.isEmpty ? 'Tanggal lahir harus diisi' : null,
                 ),
                 TextFormField(
                   controller: _noTelpController,
                   decoration: const InputDecoration(labelText: 'No. Telepon'),
+                  validator: (value) {
+                    if (!isEditing && (value == null || value.isEmpty)) {
+                      return 'No. Telepon harus diisi';
+                    }
+                    if (value != null &&
+                        value.isNotEmpty &&
+                        !RegExp(r'^\+?\d{10,13}$').hasMatch(value)) {
+                      return 'No. Telepon tidak valid';
+                    }
+                    return null;
+                  },
+                ),
+                DropdownButtonFormField<String>(
+                  value: _selectedDusun,
+                  decoration: const InputDecoration(labelText: 'Dusun'),
+                  items: _dusunList.map((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(value),
+                    );
+                  }).toList(),
+                  onChanged: (value) async {
+                    setState(() {
+                      _selectedDusun = value;
+                    });
+                    await _updateAddressFields();
+                  },
                   validator: (value) =>
-                      value!.isEmpty ? 'No. Telepon harus diisi' : null,
+                      value == null ? 'Dusun harus dipilih' : null,
                 ),
                 TextFormField(
                   controller: _jalanController,
@@ -709,42 +819,71 @@ class _StudentFormDialogState extends State<StudentFormDialog> {
                 TextFormField(
                   controller: _rtController,
                   decoration: const InputDecoration(labelText: 'RT'),
+                  validator: (value) {
+                    if (value != null &&
+                        value.isNotEmpty &&
+                        !RegExp(r'^\d+$').hasMatch(value)) {
+                      return 'RT harus berupa angka';
+                    }
+                    return null;
+                  },
                 ),
                 TextFormField(
                   controller: _rwController,
                   decoration: const InputDecoration(labelText: 'RW'),
-                ),
-                TextFormField(
-                  controller: _dusunController,
-                  decoration: const InputDecoration(labelText: 'Dusun'),
+                  validator: (value) {
+                    if (value != null &&
+                        value.isNotEmpty &&
+                        !RegExp(r'^\d+$').hasMatch(value)) {
+                      return 'RW harus berupa angka';
+                    }
+                    return null;
+                  },
                 ),
                 TextFormField(
                   controller: _desaController,
                   decoration: const InputDecoration(labelText: 'Desa'),
+                  readOnly: true,
                 ),
                 TextFormField(
                   controller: _kecamatanController,
                   decoration: const InputDecoration(labelText: 'Kecamatan'),
+                  readOnly: true,
                 ),
                 TextFormField(
                   controller: _kabupatenController,
                   decoration: const InputDecoration(labelText: 'Kabupaten'),
+                  readOnly: true,
                 ),
                 TextFormField(
                   controller: _provinsiController,
                   decoration: const InputDecoration(labelText: 'Provinsi'),
+                  readOnly: true,
                 ),
                 TextFormField(
                   controller: _kodePosController,
                   decoration: const InputDecoration(labelText: 'Kode Pos'),
+                  readOnly: true,
                 ),
                 TextFormField(
                   controller: _namaAyahController,
                   decoration: const InputDecoration(labelText: 'Nama Ayah'),
+                  validator: (value) {
+                    if (!isEditing && (value == null || value.isEmpty)) {
+                      return 'Nama ayah harus diisi';
+                    }
+                    return null;
+                  },
                 ),
                 TextFormField(
                   controller: _namaIbuController,
                   decoration: const InputDecoration(labelText: 'Nama Ibu'),
+                  validator: (value) {
+                    if (!isEditing && (value == null || value.isEmpty)) {
+                      return 'Nama ibu harus diisi';
+                    }
+                    return null;
+                  },
                 ),
                 TextFormField(
                   controller: _namaWaliController,
@@ -766,7 +905,7 @@ class _StudentFormDialogState extends State<StudentFormDialog> {
                       onPressed: _isLoading ? null : _saveStudent,
                       child: _isLoading
                           ? const CircularProgressIndicator()
-                          : Text(widget.student == null ? 'Tambah' : 'Simpan'),
+                          : Text(isEditing ? 'Simpan' : 'Tambah'),
                     ),
                   ],
                 ),

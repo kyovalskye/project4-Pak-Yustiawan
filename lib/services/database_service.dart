@@ -229,12 +229,15 @@ class DatabaseService {
   static Future<void> updateStudent(Student student) async {
     try {
       await testConnection();
-      if (await isNisnExists(student.nisn, excludeId: student.id)) {
-        throw const DatabaseException(
-          message: 'NISN sudah terdaftar untuk siswa lain',
-          type: 'DUPLICATE_NISN',
-          details: 'Gunakan NISN yang berbeda',
-        );
+      // Only check for duplicate NISN if it has changed
+      if (student.nisn != (await getStudentById(student.id))?.nisn) {
+        if (await isNisnExists(student.nisn, excludeId: student.id)) {
+          throw const DatabaseException(
+            message: 'NISN sudah terdaftar untuk siswa lain',
+            type: 'DUPLICATE_NISN',
+            details: 'Gunakan NISN yang berbeda',
+          );
+        }
       }
 
       final data = student.toJson();
